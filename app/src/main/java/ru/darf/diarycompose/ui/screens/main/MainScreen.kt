@@ -7,12 +7,14 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,7 +28,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,40 +35,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import com.kizitonwose.calendar.compose.HorizontalCalendar
-import com.kizitonwose.calendar.compose.rememberCalendarState
-import com.kizitonwose.calendar.core.atStartOfMonth
-import com.kizitonwose.calendar.core.firstDayOfWeekFromLocale
-import com.kizitonwose.calendar.core.yearMonth
 import ru.darf.diarycompose.R
 import ru.darf.diarycompose.core.ext.asPainter
 import ru.darf.diarycompose.core.ext.asString
 import ru.darf.diarycompose.core.ext.asVector
 import ru.darf.diarycompose.core.ext.clickableNoRipple
+import ru.darf.diarycompose.core.ext.clickableRipple
 import ru.darf.diarycompose.core.ext.hiltViewModelApp
 import ru.darf.diarycompose.core.utils.router.ScreenCompanionRouter
 import ru.darf.diarycompose.core.utils.ui.BaseScreen
 import ru.darf.diarycompose.ui.core.AppTopBar
 import ru.darf.diarycompose.ui.core.IconButton
+import ru.darf.diarycompose.ui.models.EventModelUi
 import ru.darf.diarycompose.ui.theme.AppTheme
-import ru.darf.diarycompose.ui.theme.backgroundPrimary
-import ru.darf.diarycompose.ui.theme.backgroundSecondary
-import ru.darf.diarycompose.ui.theme.backgroundTertiary
-import ru.darf.diarycompose.ui.theme.sky
-import ru.darf.diarycompose.ui.theme.textField
-import ru.darf.diarycompose.ui.theme.textPrimary
-import ru.darf.diarycompose.ui.theme.textSecondary
-import ru.darf.diarycompose.ui.theme.topIconTint
-import java.time.LocalDate
-import java.time.YearMonth
 
 class MainScreen(
     navBuilder: NavGraphBuilder,
@@ -84,7 +71,13 @@ class MainScreen(
         val viewModel = hiltViewModelApp<MainViewModel>()
         val viewState by viewModel.viewState.collectAsStateWithLifecycle()
 
-        MainContent(viewModel, viewState, navController)
+        MainContent(
+            viewModel = viewModel,
+            viewState = viewState,
+            navController = navController,
+            currentEvent = viewState.currentEvent,
+            onEventClose = viewModel::closeEventDetails
+        )
     }
 }
 
@@ -94,6 +87,8 @@ private fun MainContent(
     viewModel: MainViewModel,
     viewState: MainViewState,
     navController: NavHostController,
+    currentEvent: EventModelUi?,
+    onEventClose: () -> Unit,
 ) {
     val hours = remember { (0..23).toList() }
     val datePickerState = rememberDatePickerState()
@@ -116,13 +111,25 @@ private fun MainContent(
             )
         },
         floatingActionButton = {
-            IconButton(
-                modifier = Modifier.padding(8.dp),
-                imageVector = R.drawable.ic_add.asVector(),
-                contentPadding = PaddingValues(16.dp),
-                hasRipple = true,
-                borderColor = AppTheme.colors.textPrimary
-            )
+            AnimatedVisibility(
+                visible = currentEvent == null,
+                enter = fadeIn(animationSpec = tween(300)) + scaleIn(
+                    initialScale = 0.8f,
+                    animationSpec = tween(300)
+                ),
+                exit = fadeOut(animationSpec = tween(300)) + scaleOut(
+                    targetScale = 0.8f,
+                    animationSpec = tween(300)
+                )
+            ) {
+                IconButton(
+                    modifier = Modifier.padding(8.dp),
+                    imageVector = R.drawable.ic_add.asVector(),
+                    contentPadding = PaddingValues(16.dp),
+                    hasRipple = true,
+                    borderColor = AppTheme.colors.textPrimary
+                )
+            }
         },
     ) {
         LazyColumn(
@@ -179,86 +186,81 @@ private fun MainContent(
                             color = AppTheme.colors.textPrimary
                         )
                         HorizontalDivider(color = AppTheme.colors.textSecondary)
-                        // TODO - if (startTime.hour == hour) drawEventCard()
                     }
                 }
                 item {
+                    // TODO - if (startTime.hour == hour)
                     EventCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp),
-                        title = "Title",
-                        time = "10:00-12:00"
+                        event = EventModelUi(
+                            id = "010101",
+                            dateStart = 0,
+                            dateFinish = 0,
+                            name = "Заметка",
+                            description = "Описание заметки и ещё какой-то текст, чтобы заполнить пространство"
+                        ),
+                        onCardClick = { eventId -> viewModel.openEventDetails(eventId) }
                     )
                 }
             }
         }
 
-//        AnimatedVisibility(
-//            visible = currentMeeting != null,
-//            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
-//                initialScale = 0.8f,
-//                animationSpec = tween(300)
-//            ),
-//            exit = fadeOut(animationSpec = tween(300)) + scaleOut(
-//                targetScale = 0.8f,
-//                animationSpec = tween(300)
-//            )
-//        ) {
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxSize()
-//                    .background(AppTheme.colors.backgroundPrimary.copy(0.5f))
-//                    .clickableNoRipple(onClick = onMeetingClose)
-//            ) {
-//                currentMeeting?.let {
-//                    MeetingShortInfo(
-//                        modifier = Modifier
-//                            .padding(dimensionResource(R.dimen.default_padding))
-//                            .align(Alignment.BottomCenter)
-//                            .clickable(null, null) {},
-//                        meeting = Meeting(
-//                            id = currentMeeting.id,
-//                            name = currentMeeting.name,
-//                            description = currentMeeting.description,
-//                            senseTags = currentMeeting.senseTags,
-//                            author = Author("", "", "", "", ""),
-//                            startDate = currentMeeting.startDate.transformToRu(),
-//                            maxParticipants = 0,
-//                            currentParticipants = 0,
-//                            contactParticipants = 0,
-//                            latitude = currentMeeting.latitude,
-//                            longitude = currentMeeting.longitude,
-//                            isValidated = false,
-//                            isContribution = false,
-//                            coverId = currentMeeting.coverUrl.split('/').last(),
-//                            promoUrl = ""
-//                        ),
-//                        token = token
-//                    )
-//                }
-//            }
-//        }
+        AnimatedVisibility(
+            visible = currentEvent != null,
+            enter = fadeIn(animationSpec = tween(300)) + scaleIn(
+                initialScale = 0.8f,
+                animationSpec = tween(300)
+            ),
+            exit = fadeOut(animationSpec = tween(300)) + scaleOut(
+                targetScale = 0.8f,
+                animationSpec = tween(300)
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(AppTheme.colors.backgroundPrimary.copy(0.5f))
+                    .clickableNoRipple(onClick = onEventClose)
+            ) {
+                currentEvent?.let { event ->
+                    EventCardDetails(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .align(Alignment.BottomCenter)
+                            .fillMaxHeight(0.5f)
+                            .clickable(null, null) {},
+                        event = event
+                    )
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun EventCard(modifier: Modifier = Modifier, title: String, time: String) {
+private fun EventCard(
+    modifier: Modifier = Modifier,
+    event: EventModelUi,
+    onCardClick: (eventId: String) -> Unit,
+) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(AppTheme.colors.sky)
+            .background(AppTheme.colors.sky, RoundedCornerShape(4.dp))
+            .clickableRipple(onClick = { onCardClick(event.id) })
             .padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
-            text = title,
+            text = event.name,
             color = AppTheme.colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = time,
+            text = "${event.dateStart}-${event.dateFinish}",
             color = AppTheme.colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -267,6 +269,32 @@ private fun EventCard(modifier: Modifier = Modifier, title: String, time: String
 }
 
 @Composable
-private fun EventCardDetails() {
-
+private fun EventCardDetails(
+    modifier: Modifier = Modifier,
+    event: EventModelUi,
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(AppTheme.colors.sky)
+            .border(1.dp, AppTheme.colors.textPrimary, RoundedCornerShape(8.dp))
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = event.name,
+            color = AppTheme.colors.textPrimary,
+            fontSize = 20.sp
+        )
+        Text(
+            text = "${event.dateStart}-${event.dateFinish}",
+            color = AppTheme.colors.textPrimary,
+            fontSize = 16.sp
+        )
+        HorizontalDivider(color = AppTheme.colors.textSecondary)
+        Text(
+            text = event.description,
+            color = AppTheme.colors.textPrimary
+        )
+    }
 }
