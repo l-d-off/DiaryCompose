@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
-import ru.darf.diarycompose.ui.screens.event.EventScreen
+import ru.darf.diarycompose.ui.screens.event.CreateEventScreen
 import ru.darf.diarycompose.ui.screens.main.MainScreen
 import ru.darf.diarycompose.ui.theme.AppTheme
 
@@ -46,7 +46,7 @@ fun NavGraph(navController: NavHostController = rememberNavController()) {
             startDestination = MainScreen.route
         ) {
             MainScreen(this, navController).addScreen()
-            EventScreen(this, navController).addScreen()
+            CreateEventScreen(this, navController).addScreen()
         }
     }
 }

@@ -127,7 +127,10 @@ private fun MainContent(
                     imageVector = R.drawable.ic_add.asVector(),
                     contentPadding = PaddingValues(16.dp),
                     hasRipple = true,
-                    borderColor = AppTheme.colors.textPrimary
+                    borderColor = AppTheme.colors.textPrimary,
+                    onClick = {
+                        viewModel.goToCreateEventScreen(navController)
+                    }
                 )
             }
         },

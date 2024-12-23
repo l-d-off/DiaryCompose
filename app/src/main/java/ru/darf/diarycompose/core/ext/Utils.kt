@@ -19,7 +19,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavHostController
 import ru.darf.diarycompose.core.utils.viewmodel.BaseViewModel
-import ru.darf.diarycompose.ui.screens.event.EventViewModel
+import ru.darf.diarycompose.ui.screens.event.CreateEventViewModel
 import java.util.UUID
 import kotlin.jvm.internal.ClassBasedDeclarationContainer
 import kotlin.reflect.KClass
@@ -43,16 +43,6 @@ inline fun <reified VM : BaseViewModel> hiltViewModelApp(
         "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
     },
 ) = hiltViewModel<VM>(owner)
-
-@Composable
-fun hiltViewModelEvent(
-    eventId: String,
-    owner: ViewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
-        "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
-    },
-) = hiltViewModel<EventViewModel, EventViewModel.Factory>(owner) { factory ->
-    factory.create(eventId)
-}
 
 @Composable
 fun @receiver:StringRes Int.asString() = stringResource(this)
