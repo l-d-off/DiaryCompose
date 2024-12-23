@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">Ежедневник</string>
+    <string name="confirm_to_delete">Вы уверены, что хотите удалить запись?</string>
+    <string name="yes">Да</string>
+    <string name="no">Нет</string>
+</resources>
