@@ -3,5 +3,11 @@
     <string name="confirm_to_delete">Вы уверены, что хотите удалить запись?</string>
     <string name="yes">Да</string>
     <string name="no">Нет</string>
-    <string name="creating_event">Создание встречи</string>
+    <string name="creating_event">Создание записи</string>
+    <string name="placeholder_time">Время, например 02-10</string>
+    <string name="placeholder_name">Название</string>
+    <string name="placeholder_description">Описание</string>
+    <string name="add_event">Добавить</string>
+    <string name="event_added">Запись добавлена!</string>
+    <string name="default_time_range">0001</string>
 </resources>

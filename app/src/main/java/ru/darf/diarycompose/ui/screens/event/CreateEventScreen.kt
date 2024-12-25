@@ -1,40 +1,34 @@
 package ru.darf.diarycompose.ui.screens.event
 
-import androidx.compose.foundation.background
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import ru.darf.diarycompose.R
+import ru.darf.diarycompose.core.ext.addArgs
 import ru.darf.diarycompose.core.ext.asString
 import ru.darf.diarycompose.core.ext.asVector
 import ru.darf.diarycompose.core.ext.hiltViewModelApp
 import ru.darf.diarycompose.core.utils.router.ScreenCompanionRouter
 import ru.darf.diarycompose.core.utils.ui.BaseScreen
+import ru.darf.diarycompose.ui.core.AppButton
 import ru.darf.diarycompose.ui.core.AppTopBar
 import ru.darf.diarycompose.ui.core.IconButton
 import ru.darf.diarycompose.ui.core.InputTextField
-import ru.darf.diarycompose.ui.models.EventModelUi
+import ru.darf.diarycompose.ui.core.TimeRangeTextField
 import ru.darf.diarycompose.ui.theme.AppTheme
 
 class CreateEventScreen(
@@ -43,18 +37,23 @@ class CreateEventScreen(
 ) : BaseScreen(navBuilder, navController) {
 
     companion object : ScreenCompanionRouter() {
-        override fun route(host: NavHostController?) = host?.navigate(route)
+        private const val DATE_KEY = "date"
+        override val route = keyName.addArgs(DATE_KEY)
+        fun route(host: NavHostController?, date: String) {
+            val routeArg = keyName.addArgs(DATE_KEY to date)
+            host?.navigate(routeArg)
+        }
     }
 
     fun addScreen() = addScreenWithAnimation(route) { entry ->
-        val viewModel = hiltViewModelApp<CreateEventViewModel>()
+        val date = entry.arguments?.getString(DATE_KEY) ?: ""
+        val viewModel = hiltViewModelApp(date)
         val viewState by viewModel.viewState.collectAsStateWithLifecycle()
-        val event = viewState.event
 
         EventContent(
             viewModel = viewModel,
             viewState = viewState,
-            onBackClick = { viewModel.popBackStack(navController) }
+            navController = navController
         )
     }
 }
@@ -63,8 +62,9 @@ class CreateEventScreen(
 private fun EventContent(
     viewModel: CreateEventViewModel,
     viewState: CreateEventViewState,
-    onBackClick: () -> Unit,
+    navController: NavHostController,
 ) {
+    val context = LocalContext.current
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = AppTheme.colors.backgroundPrimary,
@@ -75,7 +75,7 @@ private fun EventContent(
                     IconButton(
                         modifier = Modifier.rotate(180f),
                         imageVector = R.drawable.ic_arrow.asVector(),
-                        onClick = onBackClick,
+                        onClick = { viewModel.popBackStack(navController) },
                         contentPadding = PaddingValues(8.dp),
                         hasRipple = true,
                         backgroundColor = AppTheme.colors.backgroundSecondary
@@ -91,8 +91,40 @@ private fun EventContent(
                 .padding(top = it.calculateTopPadding()),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            InputTextField(value = TextFieldValue(""), onValueChange = {}, onFocusedChange = {}, placeholder = "Value")
-            InputTextField(value = TextFieldValue(""), onValueChange = {}, onFocusedChange = {}, placeholder = "Value")
+            TimeRangeTextField(
+                value = viewState.time,
+                onValueChange = viewModel::updateTime,
+                onFocusedChange = {},
+                placeholder = R.string.placeholder_time.asString()
+            )
+            InputTextField(
+                value = viewState.name,
+                onValueChange = viewModel::updateName,
+                onFocusedChange = {},
+                placeholder = R.string.placeholder_name.asString()
+            )
+            InputTextField(
+                modifier = Modifier.weight(1f),
+                value = viewState.description,
+                singleLine = false,
+                onValueChange = viewModel::updateDescription,
+                onFocusedChange = {},
+                placeholder = R.string.placeholder_description.asString()
+            )
+            AppButton(
+                modifier = Modifier.fillMaxWidth(),
+                text = R.string.add_event.asString(),
+                onClick = {
+                    viewModel.saveNewEvent(navController) { message ->
+                        Toast.makeText(
+                            context,
+                            message,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                hasRipple = true
+            )
         }
     }
 }

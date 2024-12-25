@@ -1,5 +1,6 @@
 package ru.darf.diarycompose.ui.screens.main
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -18,23 +19,23 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -43,18 +44,22 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import ru.darf.diarycompose.R
-import ru.darf.diarycompose.core.ext.asPainter
 import ru.darf.diarycompose.core.ext.asString
 import ru.darf.diarycompose.core.ext.asVector
 import ru.darf.diarycompose.core.ext.clickableNoRipple
 import ru.darf.diarycompose.core.ext.clickableRipple
 import ru.darf.diarycompose.core.ext.hiltViewModelApp
+import ru.darf.diarycompose.core.ext.toDateString
+import ru.darf.diarycompose.core.ext.unixToDateString
 import ru.darf.diarycompose.core.utils.router.ScreenCompanionRouter
 import ru.darf.diarycompose.core.utils.ui.BaseScreen
+import ru.darf.diarycompose.domain.model.EventModel
 import ru.darf.diarycompose.ui.core.AppTopBar
 import ru.darf.diarycompose.ui.core.IconButton
-import ru.darf.diarycompose.ui.models.EventModelUi
 import ru.darf.diarycompose.ui.theme.AppTheme
+import ru.darf.diarycompose.ui.theme.topIconBackground
+import ru.darf.diarycompose.ui.theme.topIconTint
+import java.time.LocalDate
 
 class MainScreen(
     navBuilder: NavGraphBuilder,
@@ -87,12 +92,19 @@ private fun MainContent(
     viewModel: MainViewModel,
     viewState: MainViewState,
     navController: NavHostController,
-    currentEvent: EventModelUi?,
+    currentEvent: EventModel?,
     onEventClose: () -> Unit,
 ) {
-    val hours = remember { (0..23).toList() }
+    val timelines = remember { (0 until 24).map { if (it < 10) "0$it:00" else "$it:00" } }
     val datePickerState = rememberDatePickerState()
-    val selectedDate = datePickerState.selectedDateMillis ?: ""
+    val selectedDate = datePickerState.selectedDateMillis?.unixToDateString()
+    val context = LocalContext.current
+
+    LaunchedEffect(selectedDate) {
+        if (selectedDate != null) viewModel.updateSelectedDate(selectedDate)
+        else viewModel.updateSelectedDate(LocalDate.now().toDateString())
+        viewModel.getEvents()
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -100,14 +112,14 @@ private fun MainContent(
         topBar = {
             AppTopBar(
                 textTitle = R.string.app_name.asString(),
-                rightContent = {
-                    Icon(
-                        modifier = Modifier.size(24.dp),
-                        painter = R.drawable.ic_trash.asPainter(),
-                        contentDescription = "",
-                        tint = AppTheme.colors.topIconTint
-                    )
-                }
+//                rightContent = {
+//                    Icon(
+//                        modifier = Modifier.size(24.dp),
+//                        painter = R.drawable.ic_trash.asPainter(),
+//                        contentDescription = "",
+//                        tint = AppTheme.colors.topIconTint
+//                    )
+//                }
             )
         },
         floatingActionButton = {
@@ -177,7 +189,7 @@ private fun MainContent(
                     showModeToggle = false
                 )
             }
-            hours.forEach { hour ->
+            timelines.forEach { timeline ->
                 item {
                     Row(
                         modifier = Modifier.padding(start = 16.dp),
@@ -185,27 +197,25 @@ private fun MainContent(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = if (hour < 10) "0$hour:00" else "$hour:00",
+                            text = timeline,
                             color = AppTheme.colors.textPrimary
                         )
                         HorizontalDivider(color = AppTheme.colors.textSecondary)
                     }
                 }
-                item {
-                    // TODO - if (startTime.hour == hour)
-                    EventCard(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        event = EventModelUi(
-                            id = "010101",
-                            dateStart = 0,
-                            dateFinish = 0,
-                            name = "Заметка",
-                            description = "Описание заметки и ещё какой-то текст, чтобы заполнить пространство"
-                        ),
-                        onCardClick = { eventId -> viewModel.openEventDetails(eventId) }
-                    )
+                viewState.events.forEach { event ->
+                    if (timeline == event.dateStart.split(" ").last()) {
+                        item(key = event.id) {
+                            EventCard(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .animateItem(),
+                                event = event,
+                                onCardClick = { eventId -> viewModel.openEventDetails(eventId) }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -234,7 +244,16 @@ private fun MainContent(
                             .align(Alignment.BottomCenter)
                             .fillMaxHeight(0.5f)
                             .clickable(null, null) {},
-                        event = event
+                        event = event,
+                        onDelete = {
+                            viewModel.deleteEvent { message ->
+                                Toast.makeText(
+                                    context,
+                                    message,
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     )
                 }
             }
@@ -245,8 +264,8 @@ private fun MainContent(
 @Composable
 private fun EventCard(
     modifier: Modifier = Modifier,
-    event: EventModelUi,
-    onCardClick: (eventId: String) -> Unit,
+    event: EventModel,
+    onCardClick: (eventId: Int) -> Unit,
 ) {
     Column(
         modifier = modifier
@@ -263,7 +282,7 @@ private fun EventCard(
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            text = "${event.dateStart}-${event.dateFinish}",
+            text = "${event.dateStart.split(" ").last()}-${event.dateFinish.split(" ").last()}",
             color = AppTheme.colors.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -274,7 +293,8 @@ private fun EventCard(
 @Composable
 private fun EventCardDetails(
     modifier: Modifier = Modifier,
-    event: EventModelUi,
+    event: EventModel,
+    onDelete: () -> Unit,
 ) {
     Column(
         modifier = modifier
@@ -284,16 +304,33 @@ private fun EventCardDetails(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = event.name,
-            color = AppTheme.colors.textPrimary,
-            fontSize = 20.sp
-        )
-        Text(
-            text = "${event.dateStart}-${event.dateFinish}",
-            color = AppTheme.colors.textPrimary,
-            fontSize = 16.sp
-        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = event.name,
+                    color = AppTheme.colors.textPrimary,
+                    fontSize = 20.sp
+                )
+                Text(
+                    text = "${event.dateStart.split(" ").last()}-${
+                        event.dateFinish.split(" ").last()
+                    }",
+                    color = AppTheme.colors.textPrimary,
+                    fontSize = 16.sp
+                )
+            }
+            IconButton(
+                imageVector = R.drawable.ic_trash.asVector(),
+                contentPadding = PaddingValues(8.dp),
+                backgroundColor = topIconBackground,
+                tint = topIconTint,
+                hasRipple = true,
+                onClick = onDelete
+            )
+        }
         HorizontalDivider(color = AppTheme.colors.textSecondary)
         Text(
             text = event.description,

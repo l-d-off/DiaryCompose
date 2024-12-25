@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.kapt)
     alias(libs.plugins.compose.compiler)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -72,6 +73,9 @@ dependencies {
     // Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+
+    // Gson
+    implementation(libs.gson)
 
     // Hilt (Dagger)
     kapt(libs.hilt.compiler)

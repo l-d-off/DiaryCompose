@@ -45,6 +45,16 @@ inline fun <reified VM : BaseViewModel> hiltViewModelApp(
 ) = hiltViewModel<VM>(owner)
 
 @Composable
+fun hiltViewModelApp(
+    date: String,
+    owner: ViewModelStoreOwner = checkNotNull(LocalViewModelStoreOwner.current) {
+        "No ViewModelStoreOwner was provided via LocalViewModelStoreOwner"
+    },
+) = hiltViewModel<CreateEventViewModel, CreateEventViewModel.Factory>(owner) { factory ->
+    factory.create(date)
+}
+
+@Composable
 fun @receiver:StringRes Int.asString() = stringResource(this)
 
 @Composable
